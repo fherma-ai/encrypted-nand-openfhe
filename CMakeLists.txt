@@ -9,6 +9,14 @@ find_package(OpenFHE REQUIRED)
 set(CMAKE_CXX_STANDARD ${OpenFHE_CXX_STANDARD})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenFHE_CXX_FLAGS}")
 
+# One the library defines for itself and does not export. Everything in
+# utils/parallel.h sits behind it, so a solution compiled without it gets
+# setters that do nothing: it cannot choose its own thread count, and the
+# library goes on using every thread the machine has.
+if(OpenFHE_CXX_FLAGS MATCHES "-fopenmp")
+  add_compile_definitions(PARALLEL)
+endif()
+
 include_directories(${OpenFHE_INCLUDE} ${OpenFHE_INCLUDE}/third-party/include
                     ${OpenFHE_INCLUDE}/core ${OpenFHE_INCLUDE}/pke
                     ${OpenFHE_INCLUDE}/binfhe)
