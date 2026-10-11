@@ -6,9 +6,6 @@
 // Every parameter comes from config.jsonc. For this scheme there are two: the
 // parameter set, which carries the security level and the failure
 // probability, and the blind-rotation method.
-//
-// Needs OpenFHE 1.6.0 or later: naming the parameter set in a file rather than
-// at compile time wants `convertToBINFHE_PARAMSET`, which arrived in 1.6.0.
 #pragma once
 
 #include <cstdint>
@@ -17,11 +14,8 @@
 #include <string>
 #include <vector>
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
 #include "binfhecontext.h"
+#include "utils/parallel.h"
 
 namespace fherma_envelope {
 
@@ -40,15 +34,16 @@ class Envelope {
         if (cfg.scheme != "fhew")
             throw std::runtime_error("config.jsonc: this scaffold answers with fhew, not " + cfg.scheme);
 
-        // Before the context, because the library reads the thread count when
-        // it builds its own parallel regions.
-#ifdef _OPENMP
-        if (cfg.threads > 0) omp_set_num_threads(static_cast<int>(cfg.threads));
-#endif
+        // Through the library's own control, not omp_set_num_threads: every
+        // parallel region in OpenFHE is written
+        // `num_threads(OpenFHEParallelControls.GetThreadLimit(n))`, and that
+        // limit is a member it keeps rather than anything OpenMP is asked for.
+        // Setting OpenMP alone leaves the limit at the machine's thread count,
+        // which is what every row would then have run at.
+        if (cfg.threads > 0)
+            lbcrypto::OpenFHEParallelControls.SetNumThreads(static_cast<int>(cfg.threads));
 
-        // Throws on a name the library does not know, before anything runs.
-        cc_.GenerateBinFHEContext(lbcrypto::convertToBINFHE_PARAMSET(cfg.parameter_set),
-                                  method(cfg.method));
+        cc_.GenerateBinFHEContext(paramset(cfg.parameter_set), method(cfg.method));
         sk_ = cc_.KeyGen();
         // The refresh and key-switching keys every gate consumes. Once per
         // point, outside the measured window.
@@ -76,8 +71,66 @@ class Envelope {
     }
 
   private:
-    // Three of them, so a map rather than the library's own converter, which
-    // it offers for parameter sets alone.
+    // By name, so config.jsonc reads as the library's own vocabulary and an
+    // unknown one fails before anything runs.
+    //
+    // A table rather than `convertToBINFHE_PARAMSET`, which does this in one
+    // line but only from OpenFHE 1.6.0. Comparing a version against an earlier
+    // one is the whole reason this scheme is here, and the converter would
+    // have made every version before 1.6.0 unbuildable. These are the sets
+    // 1.4.2 already had, so every image in the catalogue takes them.
+    static lbcrypto::BINFHE_PARAMSET paramset(const std::string& name) {
+        static const std::map<std::string, lbcrypto::BINFHE_PARAMSET> SETS = {
+            {"LPF_STD128", lbcrypto::LPF_STD128},
+            {"LPF_STD128Q", lbcrypto::LPF_STD128Q},
+            {"LPF_STD128Q_LMKCDEY", lbcrypto::LPF_STD128Q_LMKCDEY},
+            {"LPF_STD128_LMKCDEY", lbcrypto::LPF_STD128_LMKCDEY},
+            {"MEDIUM", lbcrypto::MEDIUM},
+            {"STD128", lbcrypto::STD128},
+            {"STD128Q", lbcrypto::STD128Q},
+            {"STD128Q_3", lbcrypto::STD128Q_3},
+            {"STD128Q_3_LMKCDEY", lbcrypto::STD128Q_3_LMKCDEY},
+            {"STD128Q_4", lbcrypto::STD128Q_4},
+            {"STD128Q_4_LMKCDEY", lbcrypto::STD128Q_4_LMKCDEY},
+            {"STD128Q_LMKCDEY", lbcrypto::STD128Q_LMKCDEY},
+            {"STD128_3", lbcrypto::STD128_3},
+            {"STD128_3_LMKCDEY", lbcrypto::STD128_3_LMKCDEY},
+            {"STD128_4", lbcrypto::STD128_4},
+            {"STD128_4_LMKCDEY", lbcrypto::STD128_4_LMKCDEY},
+            {"STD128_AP", lbcrypto::STD128_AP},
+            {"STD128_LMKCDEY", lbcrypto::STD128_LMKCDEY},
+            {"STD192", lbcrypto::STD192},
+            {"STD192Q", lbcrypto::STD192Q},
+            {"STD192Q_3", lbcrypto::STD192Q_3},
+            {"STD192Q_3_LMKCDEY", lbcrypto::STD192Q_3_LMKCDEY},
+            {"STD192Q_4", lbcrypto::STD192Q_4},
+            {"STD192Q_4_LMKCDEY", lbcrypto::STD192Q_4_LMKCDEY},
+            {"STD192Q_LMKCDEY", lbcrypto::STD192Q_LMKCDEY},
+            {"STD192_3", lbcrypto::STD192_3},
+            {"STD192_3_LMKCDEY", lbcrypto::STD192_3_LMKCDEY},
+            {"STD192_4", lbcrypto::STD192_4},
+            {"STD192_4_LMKCDEY", lbcrypto::STD192_4_LMKCDEY},
+            {"STD192_LMKCDEY", lbcrypto::STD192_LMKCDEY},
+            {"STD256", lbcrypto::STD256},
+            {"STD256Q", lbcrypto::STD256Q},
+            {"STD256Q_3", lbcrypto::STD256Q_3},
+            {"STD256Q_3_LMKCDEY", lbcrypto::STD256Q_3_LMKCDEY},
+            {"STD256Q_4", lbcrypto::STD256Q_4},
+            {"STD256Q_4_LMKCDEY", lbcrypto::STD256Q_4_LMKCDEY},
+            {"STD256Q_LMKCDEY", lbcrypto::STD256Q_LMKCDEY},
+            {"STD256_3", lbcrypto::STD256_3},
+            {"STD256_3_LMKCDEY", lbcrypto::STD256_3_LMKCDEY},
+            {"STD256_4", lbcrypto::STD256_4},
+            {"STD256_4_LMKCDEY", lbcrypto::STD256_4_LMKCDEY},
+            {"STD256_LMKCDEY", lbcrypto::STD256_LMKCDEY},
+            {"TOY", lbcrypto::TOY},
+        };
+        auto found = SETS.find(name);
+        if (found == SETS.end())
+            throw std::runtime_error("config.jsonc: unknown parameter_set " + name);
+        return found->second;
+    }
+
     static lbcrypto::BINFHE_METHOD method(const std::string& name) {
         static const std::map<std::string, lbcrypto::BINFHE_METHOD> M = {
             {"AP", lbcrypto::AP},
