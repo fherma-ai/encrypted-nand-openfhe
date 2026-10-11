@@ -93,18 +93,18 @@
   //   failure probability | the _LMKCDEY sets, which take that method alone.
   // Read by name, which OpenFHE has been able to do since 1.6.0; an earlier
   // image cannot build this scheme.
-  "parameter_set": "STD128",
+  "parameter_set": "STD128_LMKCDEY",
 
   // The blind-rotation method, and the thing a board here compares.
   //   "GINX"    — OpenFHE's TFHE (CGGI) variant.
   //   "LMKCDEY" — the optimised FHEW (DM) variant, ia.cr/2022/198.
   //   "AP"      — the original Ducas-Micciancio.
   // A set whose name ends in _LMKCDEY is tuned for LMKCDEY and takes no other.
-  "method": "GINX",
+  "method": "LMKCDEY",
 
   // Worker threads for the library's OpenMP regions. 0 leaves the machine's
   // own setting alone. One gate parallelises over the gadget digits of a
   // single ciphertext and there are only a handful, so it stops gaining at
   // about eight; a run of many gates uses a larger machine through them.
-  "threads": 24
+  "threads": 1
 }
