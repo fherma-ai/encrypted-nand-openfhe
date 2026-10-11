@@ -106,5 +106,5 @@
   // own setting alone. One gate parallelises over the gadget digits of a
   // single ciphertext and there are only a handful, so it stops gaining at
   // about eight; a run of many gates uses a larger machine through them.
-  "threads": 8
+  "threads": 24
 }
